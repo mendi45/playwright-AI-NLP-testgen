@@ -1,0 +1,26 @@
+{
+  "name": "playwright-ai-nlp-testgen",
+  "version": "1.0.0",
+  "description": "🧠 A smart test generation tool that uses AI + NLP + Playwright to create end-to-end automated tests for any given website.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mendi45/playwright-AI-NLP-testgen.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mendi45/playwright-AI-NLP-testgen/issues"
+  },
+  "homepage": "https://github.com/mendi45/playwright-AI-NLP-testgen#readme",
+  "dependencies": {
+    "dotenv": "^17.2.0",
+    "openai": "^5.9.0",
+    "playwright": "^1.54.1"
+  }
+}
