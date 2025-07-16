@@ -72,7 +72,7 @@ ${dom}
 /**
  * Builds a prompt for generating a test file that uses only known methods from the Page Object
  */
-export function buildPromptForTestFile(pageClassName: string, methodNames: string[], domain: string): string {
+export function buildPromptForTestFile(pageClassName: string, methodNames: string[], domain: string, url: string): string {
   return `
 You are a QA automation engineer writing Playwright tests.
 
@@ -84,13 +84,30 @@ ${methodNames.map(name => `- ${name}()`).join('\n')}
 
 Requirements:
 - Use these imports at the top:
-  import { test, expect } from '@playwright/test';
+  import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
   import { ${pageClassName} } from '../../pages/${domain}/${pageClassName}';
-- Instantiate the class in each test using:
-  const pageObj = new ${pageClassName}(page);
-- Write at least 2 valid test cases
-- Do NOT use markdown, comments, or explanations
-- Output only valid TypeScript test code
+- Wrap all tests in:
+  test.describe.serial('${pageClassName} Tests', () => { ... });
+- Define these variables at the top:
+  let browser: Browser;
+  let context: BrowserContext;
+  let page: Page;
+  let pageObj: ${pageClassName};
+- Inside 'beforeAll', write:
+  test.beforeAll(async ({ browser: testBrowser }) => {
+    browser = testBrowser;
+    context = await browser.newContext();
+    page = await context.newPage();
+    pageObj = new ${pageClassName}(page);
+    await page.goto('${url}');
+  });
+- Inside 'afterAll', write:
+  test.afterAll(async () => {
+    await context.close();
+  });
+- Write at least 2 valid test cases using only the methods above.
+- Do NOT include markdown, comments, or explanations.
+- Output only valid TypeScript code.
 `;
 }
 

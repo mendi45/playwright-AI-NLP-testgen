@@ -41,7 +41,7 @@ async function run() {
 
   // 5. Build prompt for test file
   console.log('🧪 Generating test file...');
-  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain);
+  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain, TARGET_URL);
   const testCode = await generateFromPrompt(testPrompt);
 
   // 6. Save test file

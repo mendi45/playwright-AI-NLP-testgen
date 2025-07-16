@@ -6,7 +6,7 @@ import { saveToFile } from './fileWriter';
 /**
  * Main entry to generate test from a given Page Object file
  */
-export async function generateTestForPageObject(domain: string, pageClassName: string, pageObjectCode: string) {
+export async function generateTestForPageObject(domain: string, pageClassName: string, pageObjectCode: string, url: string) {
   // 1. Extract public method names
   const methodNames = extractPublicMethodNames(pageObjectCode);
   if (methodNames.length === 0) {
@@ -15,7 +15,7 @@ export async function generateTestForPageObject(domain: string, pageClassName: s
   }
 
   // 2. Generate test prompt
-  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain);
+  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain, url);
 
   // 3. Generate test code
   const testCode = await generateFromPrompt(testPrompt);
