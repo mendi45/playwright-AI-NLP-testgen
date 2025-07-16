@@ -1,36 +1,43 @@
+import promptSync from 'prompt-sync';
+const prompt = promptSync();
+
 import { scanDOM } from './src/pageScanner';
 import { generateFromPrompt } from './src/openaiClient';
-import {
-  buildPromptForPageObject,
-  extractPublicMethodNames,
-  buildPromptForTestFile,
-  addPlaywrightImport
-} from './src/promptBuilder';
+import { buildPromptForPageObject, extractPublicMethodNames, buildPromptForTestFile } from './src/promptBuilder';
 import { saveToFile } from './src/fileWriter';
-import path from 'path';
 
-const TARGET_URL = 'https://login.eprsys.com/Home/loginV3';
+const DEFAULT_URL = 'https://example.com/login';
 
 async function run() {
-  console.log('🚀 Starting test generation for:', TARGET_URL);
+  // Prompt for URL
+  const input = prompt(`🌐 Enter the target URL (default: ${DEFAULT_URL}): `);
+  const targetUrl = input.trim() === '' ? DEFAULT_URL : input.trim();
 
-  const domain = new URL(TARGET_URL).hostname.replace(/^www\./, '');
-  const slug = TARGET_URL.replace(/^https?:\/\//, '').replace(/[^\w]/g, '_');
-  const pageClassName = generatePageClassName(domain, TARGET_URL);
+  if (!targetUrl.startsWith('http')) {
+    console.error('❌ Invalid URL. Please enter a valid http/https address.');
+    process.exit(1);
+  }
+
+  console.log('🚀 Starting test generation for:', targetUrl);
+
+  const domain = new URL(targetUrl).hostname.replace(/^www\./, '');
+  const pageClassName = domain
+    .replace(/[^a-zA-Z0-9]/g, ' ')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('') + 'Page';
 
   // 1. Scan DOM
   console.log('🔍 Scanning DOM...');
-  const dom = await scanDOM(TARGET_URL);
+  const dom = await scanDOM(targetUrl);
 
-  // 2. Build prompt for Page Object
+  // 2. Build and send Page Object prompt
   console.log('✏️ Generating Page Object...');
-  const pagePrompt = buildPromptForPageObject(TARGET_URL, dom, pageClassName);
-  let pageObjectCode = await generateFromPrompt(pagePrompt);
-  pageObjectCode = addPlaywrightImport(pageObjectCode);
+  const pagePrompt = buildPromptForPageObject(targetUrl, dom, pageClassName);
+  const pageObjectCode = await generateFromPrompt(pagePrompt);
 
   // 3. Save Page Object to file
-  const pageFileName = `${pageClassName}.ts`;
-  await saveToFile(domain, 'pages', pageFileName, pageObjectCode);
+  await saveToFile(domain, 'pages', `${pageClassName}.ts`, pageObjectCode);
 
   // 4. Extract public method names
   const methodNames = extractPublicMethodNames(pageObjectCode);
@@ -39,27 +46,16 @@ async function run() {
     return;
   }
 
-  // 5. Build prompt for test file
+  // 5. Generate test code
   console.log('🧪 Generating test file...');
-  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain, TARGET_URL);
+  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain, targetUrl);
   const testCode = await generateFromPrompt(testPrompt);
 
   // 6. Save test file
-  const testFileName = `${slug}.spec.ts`;
+  const testFileName = `${pageClassName.replace(/Page$/, '').toLowerCase()}.spec.ts`;
   await saveToFile(domain, 'tests', testFileName, testCode);
 
   console.log('✅ Done! Page Object and test created successfully.');
-}
-
-function generatePageClassName(domain: string, url: string): string {
-  const slug = url
-    .replace(/^https?:\/\//, '')
-    .replace(/[^a-zA-Z0-9]/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-  return `${slug}Page`;
 }
 
 run().catch(err => {
