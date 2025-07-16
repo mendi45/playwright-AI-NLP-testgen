@@ -72,7 +72,7 @@ ${dom}
 /**
  * Builds a prompt for generating a test file that uses only known methods from the Page Object
  */
-export function buildPromptForTestFile(pageClassName: string, methodNames: string[], domain: string): string {
+export function buildPromptForTestFile(pageClassName: string, methodNames: string[], domain: string, url: string): string {
   return `
 You are a QA automation engineer writing Playwright tests.
 
@@ -91,6 +91,11 @@ Requirements:
 - Write at least 2 valid test cases
 - Do NOT use markdown, comments, or explanations
 - Output only valid TypeScript test code
+- Add 'beforeAll' to launch browser, create context, and navigate to '${url}'.
+- Add 'afterAll' to close the browser context.
+- Inside 'beforeAll', instantiate the Page Object using:
+    pageObj = new ${pageClassName}(page);
+- Define 'let pageObj: ${pageClassName};' outside the tests.
 `;
 }
 
