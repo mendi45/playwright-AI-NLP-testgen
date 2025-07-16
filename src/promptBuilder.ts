@@ -84,18 +84,30 @@ ${methodNames.map(name => `- ${name}()`).join('\n')}
 
 Requirements:
 - Use these imports at the top:
-  import { test, expect } from '@playwright/test';
+  import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
   import { ${pageClassName} } from '../../pages/${domain}/${pageClassName}';
-- Instantiate the class in each test using:
-  const pageObj = new ${pageClassName}(page);
-- Write at least 2 valid test cases
-- Do NOT use markdown, comments, or explanations
-- Output only valid TypeScript test code
-- Add 'beforeAll' to launch browser, create context, and navigate to '${url}'.
-- Add 'afterAll' to close the browser context.
-- Inside 'beforeAll', instantiate the Page Object using:
+- Wrap all tests in:
+  test.describe.serial('${pageClassName} Tests', () => { ... });
+- Define these variables at the top:
+  let browser: Browser;
+  let context: BrowserContext;
+  let page: Page;
+  let pageObj: ${pageClassName};
+- Inside 'beforeAll', write:
+  test.beforeAll(async ({ browser: testBrowser }) => {
+    browser = testBrowser;
+    context = await browser.newContext();
+    page = await context.newPage();
     pageObj = new ${pageClassName}(page);
-- Define 'let pageObj: ${pageClassName};' outside the tests.
+    await page.goto('${url}');
+  });
+- Inside 'afterAll', write:
+  test.afterAll(async () => {
+    await context.close();
+  });
+- Write at least 2 valid test cases using only the methods above.
+- Do NOT include markdown, comments, or explanations.
+- Output only valid TypeScript code.
 `;
 }
 
