@@ -1,20 +1,67 @@
 import { scanDOM } from './src/pageScanner';
 import { generateFromPrompt } from './src/openaiClient';
-import { buildPromptForPageObject } from './src/promptBuilder';
+import {
+  buildPromptForPageObject,
+  extractPublicMethodNames,
+  buildPromptForTestFile,
+  addPlaywrightImport
+} from './src/promptBuilder';
 import { saveToFile } from './src/fileWriter';
+import path from 'path';
 
-//run this test function using this command in the terminal: npx ts-node index.ts
-//expecting to get a new file inside pages folder
+const TARGET_URL = 'https://login.eprsys.com/Home/loginV3';
 
-(async () => {
-  const url = 'https://example.com';
-  const dom = await scanDOM(url);
+async function run() {
+  console.log('🚀 Starting test generation for:', TARGET_URL);
 
-  const prompt = buildPromptForPageObject(url, dom);
-  const code = await generateFromPrompt(prompt);
+  const domain = new URL(TARGET_URL).hostname.replace(/^www\./, '');
+  const slug = TARGET_URL.replace(/^https?:\/\//, '').replace(/[^\w]/g, '_');
+  const pageClassName = generatePageClassName(domain, TARGET_URL);
 
-  console.log("✅ Page Object Code:\n", code);
+  // 1. Scan DOM
+  console.log('🔍 Scanning DOM...');
+  const dom = await scanDOM(TARGET_URL);
 
-  // save new files by this stracture: /pages/example.com/ExamplePage.ts
-  saveToFile(url, 'pages', 'ExamplePage.ts', code);
-})();
+  // 2. Build prompt for Page Object
+  console.log('✏️ Generating Page Object...');
+  const pagePrompt = buildPromptForPageObject(TARGET_URL, dom, pageClassName);
+  let pageObjectCode = await generateFromPrompt(pagePrompt);
+  pageObjectCode = addPlaywrightImport(pageObjectCode);
+
+  // 3. Save Page Object to file
+  const pageFileName = `${pageClassName}.ts`;
+  await saveToFile(domain, 'pages', pageFileName, pageObjectCode);
+
+  // 4. Extract public method names
+  const methodNames = extractPublicMethodNames(pageObjectCode);
+  if (!methodNames.length) {
+    console.error('❌ No public methods found. Cannot generate test file.');
+    return;
+  }
+
+  // 5. Build prompt for test file
+  console.log('🧪 Generating test file...');
+  const testPrompt = buildPromptForTestFile(pageClassName, methodNames, domain);
+  const testCode = await generateFromPrompt(testPrompt);
+
+  // 6. Save test file
+  const testFileName = `${slug}.spec.ts`;
+  await saveToFile(domain, 'tests', testFileName, testCode);
+
+  console.log('✅ Done! Page Object and test created successfully.');
+}
+
+function generatePageClassName(domain: string, url: string): string {
+  const slug = url
+    .replace(/^https?:\/\//, '')
+    .replace(/[^a-zA-Z0-9]/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+  return `${slug}Page`;
+}
+
+run().catch(err => {
+  console.error('❌ Error during execution:', err);
+});

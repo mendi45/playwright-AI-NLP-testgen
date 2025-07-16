@@ -1,46 +1,121 @@
-import { curserRules } from '../curserrules';
+import { curserRules } from '../curserRules';
 
-export function buildPromptForPageObject(url: string, dom: string): string {
+/**
+ * Builds a prompt for generating a Playwright Page Object class
+ */
+export function buildPromptForPageObject(url: string, dom: string, pageClassName: string): string {
   return `
 You are a senior QA automation engineer.
 
-Your task is to generate a clean and modular **Playwright Page Object class** in **TypeScript** (not Selenium, not JavaScript, not Java).
+Your task is to generate a Playwright Page Object class in TypeScript, named exactly "${pageClassName}".
 
-Use Playwright's official syntax and best practices:
-- Use 'page.getByRole', 'page.getByTestId', 'page.getByPlaceholder' where applicable
-- Prefer semantic locators
-- Follow the Page Object Model (POM) structure
-- Include helper methods like: fillForm(), clickButton(), getHeaderText()
+Structure and Coding Guidelines:
+- The file must start with:
+  import { Locator, Page } from '@playwright/test';
 
-Follow these user-defined automation rules:
+- The class must begin with:
+  export class ${pageClassName} {
+
+- Inside the class, define:
+  - private page: Page;
+  - At least 3 private locators of type Locator, initialized in the constructor.
+    For example:
+      private header: Locator;
+      private emailInput: Locator;
+
+- The constructor must initialize 'page' and all locators using:
+      this.page = page;
+      this.emailInput = this.page.locator('...');
+  
+- All public methods must:
+  - Be declared as async
+  - Use only the private locators defined in the constructor
+  - Return correct Promise types (e.g. Promise<string>, Promise<void>)
+  - Use textContent() ?? '' when retrieving text
+
+Locator Strategy Rules:
+- YOU MUST use actual selectors from the DOM snapshot provided below.
+- DO NOT use placeholder selectors like '...'.
+- You MUST prioritize robust and semantic locators in this order:
+  1. getByRole() with accessible name — most preferred
+     Example: this.page.getByRole('textbox', { name: 'Email' })
+  2. getByLabelText(), getByPlaceholder(), getByTestId()
+     Example: this.page.getByPlaceholder('Enter your email')
+  3. this.page.locator('[data-testid="..."]')
+- DO NOT use locators like: input#id, div.class, :nth-child
+- Only use this.page.locator('...') as a last resort AND with a stable attribute (e.g. name, aria-label)
+- Do not use ID-based selectors (e.g. input#username) unless no better option exists
+- Avoid using unstable CSS selectors like class names or :nth-child
+- If necessary, use .filter() or .nth() to narrow down locator results
+- Avoid using this.page.locator(...) directly in methods — always use the initialized private locators
+- Consider mapping components to generic types such as: tableComponent, formComponent, modalComponent, navbarComponent
+- Prioritize these HTML attributes when selecting elements:
+  ${JSON.stringify(curserRules.locatorStrategy.targetAttributes)}
+
+Additional Constraints:
+- DO NOT include any extra import statements
+- DO NOT use markdown formatting (no \`\`\`)
+- DO NOT include explanations, comments, or descriptions
+
+Custom automation rules:
 ${JSON.stringify(curserRules, null, 2)}
 
-The target page is:
+Target URL:
 ${url}
 
-This is the current DOM snapshot:
+DOM snapshot:
 ${dom}
-
-Your output should be:
-- A single TypeScript class with locators and helper functions
-- Written in raw code format (NO markdown, NO explanations, NO triple backticks)
-- Do NOT use WebDriver, Selenium, or other libraries
-- Assume that the class will be used in Playwright tests later
 `;
 }
 
-export function buildPromptForTest(pageClassName: string): string {
-  return `
-You are a Playwright automation engineer.
 
-Generate 2 Playwright end-to-end tests in TypeScript that use the Page Object class named "${pageClassName}".
+/**
+ * Builds a prompt for generating a test file that uses only known methods from the Page Object
+ */
+export function buildPromptForTestFile(pageClassName: string, methodNames: string[], domain: string): string {
+  return `
+You are a QA automation engineer writing Playwright tests.
+
+Create a TypeScript test file that uses the Page Object class "${pageClassName}" located at:
+'../../pages/${domain}/${pageClassName}'
+
+Use ONLY these public methods from the Page Object:
+${methodNames.map(name => `- ${name}()`).join('\n')}
 
 Requirements:
-- Import the Page Object
-- Use Playwright test runner ('test', 'expect')
-- Keep the tests clean and descriptive
-- Follow best practices for structure and readability
-
-Only return raw TypeScript code. No markdown, no explanation.
+- Use these imports at the top:
+  import { test, expect } from '@playwright/test';
+  import { ${pageClassName} } from '../../pages/${domain}/${pageClassName}';
+- Instantiate the class in each test using:
+  const pageObj = new ${pageClassName}(page);
+- Write at least 2 valid test cases
+- Do NOT use markdown, comments, or explanations
+- Output only valid TypeScript test code
 `;
+}
+
+/**
+ * Extracts public async method names from generated Page Object code
+ */
+export function extractPublicMethodNames(pageObjectCode: string): string[] {
+  const methodRegex = /public\s+async\s+(\w+)\s*\(/g;
+  const names: string[] = [];
+  let match;
+  while ((match = methodRegex.exec(pageObjectCode)) !== null) {
+    names.push(match[1]);
+  }
+  return names;
+}
+
+/**
+ * Injects the missing import statement, replacing any existing Page/Locator imports
+ */
+export function addPlaywrightImport(code: string): string {
+  const cleanCode = code
+    .replace(/^import\s+\{[^}]*Page[^}]*}[^\n]*\n?/gm, '')
+    .replace(/^import\s+\{[^}]*Locator[^}]*}[^\n]*\n?/gm, '')
+    .trim();
+
+  const importStatement = `import { Locator, Page } from '@playwright/test';\n\n`;
+  return importStatement + cleanCode;
 }

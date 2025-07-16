@@ -4,7 +4,12 @@
   "description": "🧠 A smart test generation tool that uses AI + NLP + Playwright to create end-to-end automated tests for any given website.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "ts-node index.ts",
+    "build": "tsc",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:domain": "playwright test tests/example.com"
   },
   "repository": {
     "type": "git",
@@ -22,5 +27,10 @@
     "dotenv": "^17.2.0",
     "openai": "^5.9.0",
     "playwright": "^1.54.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }
